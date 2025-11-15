@@ -1,0 +1,51 @@
+name: Tägliche Pool-Datenverarbeitung
+
+# Workflow läuft einmal täglich
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Täglich um 02:00 UTC
+  workflow_dispatch:  # Ermöglicht manuelles Auslösen
+
+jobs:
+  process-pool-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Schritt 1: Repository auschecken
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      # Schritt 2: Python-Umgebung einrichten
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'  # Cache für schnellere Builds
+
+      # Schritt 3: Abhängigkeiten installieren
+      - name: Abhängigkeiten installieren
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Schritt 4: TLM_Pools.py ausführen (Daten von API abrufen)
+      - name: TLM_Pools.py ausführen
+        run: python TLM_Pools.py
+
+      # Schritt 5: avg_pools.py ausführen (Durchschnitte berechnen)
+      - name: avg_pools.py ausführen
+        run: python avg_pools.py
+
+      # Schritt 6: avg_Visual.py ausführen (Visualisierungen erstellen)
+      - name: avg_Visual.py ausführen
+        run: python avg_Visual.py
+
+      # Schritt 7: Änderungen committen und pushen
+      - name: Änderungen committen und pushen
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -A
+          # Nur committen wenn es Änderungen gibt
+          git diff-index --quiet HEAD || git commit -m "🤖 Automatisches Update: Pool-Daten $(date +'%Y-%m-%d %H:%M:%S')"
+          git push
