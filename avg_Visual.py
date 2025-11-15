@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import matplotlib.dates as mdates
 import numpy as np
 import os
@@ -63,16 +63,33 @@ class PoolDataVisualizer:
 
         self.parsed_pools = {key: f'pool_{key}' for key in all_keys}
 
-    def create_bar_chart(self, pool_type, save_dir=None):
-        """Erstellt Balkendiagramm für einen bestimmten Pool-Typ und speichert es optional"""
+    def create_bar_chart(self, pool_type, days=None, save_dir=None):
+        """Erstellt Balkendiagramm für einen bestimmten Pool-Typ und Zeitraum und speichert es optional"""
         if pool_type not in self.parsed_pools:
             print(f"❌ Pool-Typ '{pool_type}' nicht gefunden!")
             return
 
         col_name = self.parsed_pools[pool_type]
 
+        # Daten filtern basierend auf dem Zeitraum
         chart_data = self.df[['day', col_name, 'numberofentries']].copy()
+        
+        if days is not None:
+            # Filtere die Daten auf die letzten X Tage
+            latest_date = chart_data['day'].max()
+            cutoff_date = latest_date - timedelta(days=days)
+            chart_data = chart_data[chart_data['day'] >= cutoff_date]
+            time_period = f" (Last {days} days)"
+            filename_suffix = f"_{days}days"
+        else:
+            time_period = ""
+            filename_suffix = ""
+
         chart_data = chart_data.sort_values('day')
+
+        if len(chart_data) == 0:
+            print(f"⚠️ Keine Daten für Pool '{pool_type}' im angegebenen Zeitraum")
+            return
 
         avg_value = chart_data[col_name].mean()
         max_value = chart_data[col_name].max()
@@ -84,7 +101,7 @@ class PoolDataVisualizer:
         bars = plt.bar(chart_data['day'], chart_data[col_name], 
                       color='steelblue', alpha=0.7, edgecolor='navy', linewidth=0.5)
 
-        plt.title(f'Pool: {pool_type}\n'
+        plt.title(f'Pool: {pool_type}{time_period}\n'
                  f'Average: {avg_value:.4f} TLM | Max: {max_value:.4f} TLM | Min: {min_value:.4f} TLM',
                  fontsize=16, fontweight='bold', pad=20)
 
@@ -95,12 +112,12 @@ class PoolDataVisualizer:
 
         date_range = (chart_data['day'].max() - chart_data['day'].min()).days
 
-        if date_range <= 7:
+        if date_range <= 7 or days == 7:
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%a\n%d.%m.%Y'))
             ax.xaxis.set_major_locator(mdates.DayLocator())
-        elif date_range <= 31:
+        elif date_range <= 31 or days == 30:
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%d.%m'))
-            ax.xaxis.set_major_locator(mdates.DayLocator(interval=2))
+            ax.xaxis.set_major_locator(mdates.DayLocator(interval=max(1, date_range // 10)))
         else:
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%Y'))
             ax.xaxis.set_major_locator(mdates.MonthLocator())
@@ -118,7 +135,7 @@ class PoolDataVisualizer:
             # Erstelle den Ordner, falls er nicht existiert
             os.makedirs(save_dir, exist_ok=True)
             # Erstelle den Dateinamen
-            filename = f"pool_{pool_type}.png"
+            filename = f"pool_{pool_type}{filename_suffix}.png"
             filepath = os.path.join(save_dir, filename)
             plt.savefig(filepath, dpi=300, bbox_inches='tight')
             print(f"💾 Diagramm gespeichert als: {filepath}")
@@ -193,7 +210,15 @@ class PoolDataVisualizer:
         
         for i, pool_type in enumerate(pool_types, 1):
             print(f"📊 Erstelle Diagramm {i}/{len(pool_types)}: {pool_type}")
-            self.create_bar_chart(pool_type, save_dir)
+            
+            # Vollständigen Zeitraum
+            self.create_bar_chart(pool_type, save_dir=save_dir)
+            
+            # Letzte 30 Tage
+            self.create_bar_chart(pool_type, days=30, save_dir=save_dir)
+            
+            # Letzte 7 Tage
+            self.create_bar_chart(pool_type, days=7, save_dir=save_dir)
             
         print(f"\n✅ Alle {len(pool_types)} Pool-Diagramme wurden gespeichert!")
         print(f"📁 Bilder gespeichert in: {save_dir}")
