@@ -191,7 +191,7 @@ class PoolDataVisualizer:
         plt.close()
 
     def run_sequential(self, save_dir="pool_plots"):
-        """Startet den sequentiellen Modus - speichert alle Pools als Bilder"""
+        """Startet den sequentiellen Modus - speichert alle Pools als Bilder in Unterordnern"""
         if not self.load_data():
             return
 
@@ -201,8 +201,20 @@ class PoolDataVisualizer:
         print("🎯 POOL-DATEN VISUALIZER (AUTOSAVE MODUS)")
         print("="*60)
 
+        # Erstelle Hauptordner und Unterordner
+        all_time_dir = os.path.join(save_dir, "all_time")
+        thirty_days_dir = os.path.join(save_dir, "30_days")
+        seven_days_dir = os.path.join(save_dir, "7_days")
+        
+        os.makedirs(all_time_dir, exist_ok=True)
+        os.makedirs(thirty_days_dir, exist_ok=True)
+        os.makedirs(seven_days_dir, exist_ok=True)
+
         print(f"\n📊 Erstelle kombiniertes Diagramm für alle Pools...")
-        self._create_all_pools_chart(save_dir)
+        # Speichere kombinierte Diagramme in allen Ordnern
+        self._create_all_pools_chart(all_time_dir)
+        self._create_all_pools_chart(thirty_days_dir)
+        self._create_all_pools_chart(seven_days_dir)
 
         pool_types = sorted(self.parsed_pools.keys())
         
@@ -211,17 +223,20 @@ class PoolDataVisualizer:
         for i, pool_type in enumerate(pool_types, 1):
             print(f"📊 Erstelle Diagramm {i}/{len(pool_types)}: {pool_type}")
             
-            # Vollständigen Zeitraum
-            self.create_bar_chart(pool_type, save_dir=save_dir)
+            # Vollständigen Zeitraum (alle Daten)
+            self.create_bar_chart(pool_type, save_dir=all_time_dir)
             
             # Letzte 30 Tage
-            self.create_bar_chart(pool_type, days=30, save_dir=save_dir)
+            self.create_bar_chart(pool_type, days=30, save_dir=thirty_days_dir)
             
             # Letzte 7 Tage
-            self.create_bar_chart(pool_type, days=7, save_dir=save_dir)
+            self.create_bar_chart(pool_type, days=7, save_dir=seven_days_dir)
             
         print(f"\n✅ Alle {len(pool_types)} Pool-Diagramme wurden gespeichert!")
-        print(f"📁 Bilder gespeichert in: {save_dir}")
+        print(f"📁 Bilder gespeichert in:")
+        print(f"   - {all_time_dir} (Alle Daten)")
+        print(f"   - {thirty_days_dir} (Letzte 30 Tage)")
+        print(f"   - {seven_days_dir} (Letzte 7 Tage)")
         print("👋 Auf Wiedersehen!")
 
 def main():
